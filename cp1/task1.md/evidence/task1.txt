@@ -1,63 +1,3 @@
-# Task 1 – Computer specifications and laptop assessment
-
-## 1a. The computer in front of you
-
-| Figure | This computer | Command it came from |
-|---|---|---|
-| CPU model | Intel Core i5-11400H @ 2.70 GHz | `Get-CimInstance Win32_Processor` |
-| Cores / logical processors | 6 cores / 12 threads | `Get-CimInstance Win32_Processor` |
-| Hardware virtualization | Supported: Yes; enabled: Yes | `Get-CimInstance Win32_Processor` |
-| Memory: total / available | 7,914 MB / 1,132 MB | `systeminfo` |
-| System disk | 475.75 GB; 70.94 GB free; NVMe SSD | `Get-PhysicalDisk`, `Get-Volume` |
-| Partition style | Not collected yet | `Get-Disk` |
-| OS and version | Windows 11 Pro, build 26200 | `systeminfo` |
-
-## 1b. Thin-and-light laptop
-
-### 1. Could it run both guests simultaneously?
-
-| Part | Specification | Assessment |
-|---|---|---|
-| CPU | 2 cores / 4 threads, 1.1 GHz | Limited processing power |
-| Virtualization | AMD-V supported and enabled | Supported |
-| Memory | 8 GB LPDDR4X, soldered | Limited for two VMs |
-| Storage | 128 GB eMMC, 31 GB free | Limited disk space |
-| OS | Windows 11 Home in S mode | Restricts traditional virtualization software |
-
-### Resource calculations
-
-| Resource | Calculation | Requirement |
-|---|---|---|
-| CPU | Guest 1 vCPUs + Guest 2 vCPUs | Must leave CPU capacity for Windows |
-| RAM | Guest 1 RAM + Guest 2 RAM + 2–3 GB for host | Maximum 8 GB |
-| Disk | Guest 1 disk + Guest 2 disk | Maximum 31 GB available |
-
-Assumption: Windows needs approximately 2–3 GB RAM for basic operation.
-
-Conclusion: Running both guests simultaneously is unlikely to be comfortable. Exact confirmation requires the VM sizes from the Labs 1–2 build log.
-
-### 2. Upgrade first
-
-| Part | Upgrade possible? | Reason |
-|---|---|---|
-| CPU | No | Normally soldered |
-| RAM | No | Soldered LPDDR4X |
-| Storage | No | Soldered eMMC |
-| Operating system | Yes, S mode can be disabled | Allows more software installation options |
-
-Recommendation: Use a computer with at least 16 GB RAM and an SSD. Alternatively, run one VM at a time or use a remote computer.
-Important GitHub tips:
-1.	Use a .md file, such as task1.md.
-2.	Keep a blank line before and after every table.
-3.	Don't put the tables inside triple backticks in the actual Markdown file.
-4.	Use |---|---|---| directly below the header.
-GitHub will automatically render the tables when you save and preview the file.
-
-DriveLetter FriendlyName FileSystemType DriveType HealthStatus OperationalStatus SizeRemaining      Size
------------ ------------ -------------- --------- ------------ ----------------- -------------      ----
-                         NTFS           Fixed     Healthy      OK                      85.4 MB   1.08 GB
-C                        NTFS           Fixed     Healthy      OK                     70.93 GB 475.75 GB
-
 Task 1 – Computer specifications and laptop assessment
 1a. The computer in front of you
 I extracted the specifications from your uploaded PowerShell evidence. Here is the completed table.
@@ -80,9 +20,7 @@ systeminfo
 Get-PhysicalDisk | Format-List *
 Get-Volume
 Get-Disk | Format-Table Number, FriendlyName, PartitionStyle, Size
-Your uploaded output already contains the first four commands. You only need to collect the fifth.
-1b. A machine you have never seen: thin-and-light laptop
-1. Could it run both guests simultaneously?
+
 Laptop specifications:
 •	CPU: 2 cores / 4 threads.
 •	RAM: 8 GB.
@@ -102,3 +40,4 @@ The biggest limitation is memory.
 •	CPU: The processor is generally soldered and not upgradeable.
 •	Operating system: Switching out of S mode would make installing conventional virtualization software easier.
 My recommendation: If both guests require substantial resources, use a more powerful laptop or desktop with at least 16 GB RAM and an upgradeable SSD. Otherwise, run one VM at a time or use a remote computer for virtualization.
+
