@@ -159,4 +159,4 @@ Both guests show `10.0.2.15` on their NAT adapter. This is normal: each NAT is p
 - The Windows 11 guest runs outside Microsoft's supported minimum, so it will be slower and will page more.
 - The host keeps only about 0.5 GB of margin beyond the 3.0 GB I assumed it needs. Browsers and other heavy applications should be closed while both guests run.
 - It is suitable for a test lab, not for always-on use.
-- The real fix is hardware. Task 1 showed a single 8 GB module, and this laptop family normally has a second SODIMM slot (to be checked). Adding another 8 GB, for 16 GB in total, would let both guests have their official minimums, with about 7 GB left for the host
+- The real fix is hardware. Task 1 showed a single 8 GB module, and this laptop family normally has a second SODIMM slot (to be checked). Adding another 8 GB, for 16 GB in total, would let both guests have their official minimums, with about 7 GB left for the host.
