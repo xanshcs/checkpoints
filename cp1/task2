@@ -1,0 +1,162 @@
+# Task 2 — Test lab: one Ubuntu Server guest and one Windows 11 guest on one computer
+
+## 0. Starting point: the host figures from Task 1
+
+The lab must run on the computer I inventoried in Task 1. The figures that matter for planning are these.
+
+| Resource | Figure from Task 1 |
+|---|---|
+| Machine | ASUS TUF Gaming F15 FX506HE, running Windows 11 Pro (this is the host) |
+| CPU | Intel Core i5-11400H: 6 physical cores, 12 logical threads. Hardware virtualization is enabled in UEFI, so a hypervisor can run 64-bit guests with hardware assistance |
+| RAM | One 8 GB DDR4-3200 module, of which about **7.9 GB is usable** by Windows. In the Task 1 output only about 0.7 GB was free, so the host was already close to its limit before any virtual machine existed |
+| Disk | One Samsung 512 GB NVMe SSD. Windows reports this as about 476 GiB, because manufacturers count in decimal gigabytes and Windows counts in binary ones |
+
+The hypervisor I plan to use is **Oracle VirtualBox 7.x**, installed on the Windows host. It is a type-2 hypervisor, which means the guests run as ordinary processes inside the host operating system and share its RAM, CPU and disk. That sharing is the whole difficulty of this task: every megabyte given to a guest is a megabyte taken away from the host. The arithmetic below would be almost identical with any other type-2 hypervisor.
+
+## 1. Verdict
+
+**This computer cannot run both guests as requested, with each guest at its official minimum and the host still usable.** The limiting resource is RAM. CPU and disk are not a problem. Section 3 proves this with numbers.
+
+The task says that this is a valid answer provided it is proven and followed by the closest configuration that works. That configuration is in section 2. It runs both guests at the same time, keeps the Ubuntu guest reachable by ssh from the host with internet access, and leaves the host usable. What it gives up is that the Windows 11 guest gets 3 GB of RAM, which is **below Microsoft's 4 GB minimum**, and the host is left with only a thin safety margin of about 0.5 GB.
+
+## 2. Allocation (the closest configuration that works)
+
+| | Ubuntu Server 24.04 LTS | Windows 11 Pro |
+|---|---|---|
+| vCPUs | **1** | **2** |
+| Memory | **1024 MB** | **3072 MB** (below the 4 GB minimum) |
+| Disk size | **25 GB** | **64 GB** |
+| Disk type | **Dynamically allocated** | **Dynamically allocated** |
+| Network adapter 1 | **NAT**: gives internet access | **NAT**: gives internet access |
+| Network adapter 2 | **Host-only**: gives ssh access from the host | none |
+| Firmware and security | BIOS or EFI, either works | EFI with Secure Boot and a virtual TPM 2.0, both provided by VirtualBox 7 |
+
+## 3. Arithmetic: what is left for the host
+
+### 3.1 What I assumed the host itself needs
+
+Task 1 gave me the hardware, but not what the host operating system consumes while it is running a hypervisor. I therefore state these assumptions explicitly so they can be checked.
+
+- **Memory: 3.0 GB.** This covers an idle Windows 11 desktop (shell, Defender, drivers, background services) plus the VirtualBox manager and its helper processes. I regard 3.0 GB as an optimistic floor, not a comfortable figure, because in Task 1 the host was already using nearly all of its 7.9 GB with ordinary applications open.
+- **Hypervisor overhead: about 0.2 GB per running guest.** Each virtual machine needs memory beyond what the guest sees, for video memory, emulated devices and the hypervisor's own bookkeeping. For two guests that is 0.4 GB.
+- **CPU: 4 logical threads** (two cores' worth). This is the minimum Windows 11 asks for, and it keeps the desktop responsive while the guests work.
+- **Disk: about 120 GB already used** by the host operating system, applications and files, and a rule that the SSD should keep at least **20% free** (about 95 GB) so that it stays healthy and fast. The 120 GB figure is my assumption; if the used space measured in Task 1 is different, it should replace it, and the conclusion in section 3.4 will not change unless the host is almost full.
+
+### 3.2 Memory: the proof that the requested configuration does not fit
+
+A guest's memory is not shared or borrowed from nowhere. VirtualBox takes it from the host's physical RAM while the guest is running, and the host has only 7.9 GB in total. The table compares three cases.
+
+| Case | Windows guest | Ubuntu guest | Overhead | Total taken by the VMs | Left for the host (7.9 GB minus total) | Does the host get its 3.0 GB? |
+|---|---|---|---|---|---|---|
+| A. Both guests at official minimums | 4.0 GB | 1.0 GB | 0.4 GB | 5.4 GB | **2.5 GB** | **No: short by 0.5 GB** |
+| B. As A, with the host also given its own official minimum of 4 GB | 4.0 GB | 1.0 GB | 0.4 GB | 5.4 GB | 2.5 GB, but 4.0 GB needed | **No: short by 1.5 GB** |
+| C. My plan | 3.0 GB | 1.0 GB | 0.4 GB | 4.4 GB | **3.5 GB** | **Yes: margin of 0.5 GB** |
+
+Case A is the configuration the task describes. The guests alone (4 GB + 1 GB = 5 GB) would fit inside 7.9 GB, which is why it looks possible at first. It fails once the host is counted, because the host is left with 2.5 GB. That is less than my assumed need of 3.0 GB and less than the 4 GB that Windows 11 itself officially requires. When a host is squeezed this way, Windows starts swapping memory to the SSD constantly, the whole computer becomes sluggish, and the guests suffer as well, since their memory is also being squeezed by the host. That is the opposite of "the host must stay usable". Case B shows that if the host is held to its own official minimum, the shortfall is 1.5 GB.
+
+So no allocation that gives Windows 11 its 4 GB can leave the host usable. The only ways to fit are to reduce a guest below its minimum (case C), to run only one guest at a time, or to add RAM.
+
+### 3.3 CPU
+
+The i5-11400H has 12 logical threads. The guests get 1 + 2 = **3 vCPUs**, so **9 of the 12 threads** are not assigned to any guest. Even if the host is given 4 threads, 5 remain spare. A vCPU is not a reserved core. The host scheduler runs it on whichever thread is free, so when a guest is idle its share is available to the host. CPU is therefore not a limiting resource in this plan.
+
+### 3.4 Disk
+
+I use dynamically allocated disks, so the real space used starts small and grows as the guests fill their disks. The worst case is that both grow to their full size.
+
+- Guests, worst case: 25 GB + 64 GB = **89 GB**.
+- Free space on the SSD: 476 GiB − 120 GB (host, assumed) − 89 GB = about **267 GB free**, about 56% of the drive.
+- That is well above the 20% reserve (about 95 GB), so disk is not a limiting resource either.
+
+## 4. Justification: why each choice and not the alternative
+
+### 4.1 Ubuntu Server: 1 vCPU, 1024 MB RAM, 25 GB disk
+
+The Ubuntu Server minimum is about one CPU core, 1 GB of RAM and a few gigabytes of disk. In this lab the Ubuntu guest only has to run sshd and reach the internet, so it needs nothing more. I gave it exactly the RAM minimum, because every extra megabyte comes out of the host's thin margin. The 25 GB disk leaves room for the operating system, updates and logs. The alternative of 2 GB RAM would take 1 GB from the host's 3.5 GB and reduce the margin from 0.5 GB to negative, so I rejected it. If the Ubuntu installer complains about memory, the guest can be given 2 GB for the installation only and set back to 1 GB afterwards.
+
+### 4.2 Windows 11: 2 vCPUs
+
+Two cores is the Windows 11 minimum. One vCPU is not supported. More than two would give no real benefit in a test lab, and would only increase scheduling pressure on the host, so I rejected four vCPUs.
+
+### 4.3 Windows 11: 3072 MB RAM, which is below the minimum
+
+This is the one place where I deliberately go below an official minimum, and the reason is the arithmetic in 3.2. At the official 4 GB the host is left with 2.5 GB, which is not enough, and at 3 GB it is left with 3.5 GB, which works.
+
+The consequences are these.
+- The Windows 11 setup program refuses to continue with less than 4 GB. For this lab machine only, the check can be bypassed during setup by pressing Shift+F10 and creating the registry value `BypassRAMCheck` under `HKLM\SYSTEM\Setup\LabConfig`.
+- I do not lower the other requirements. TPM 2.0 and Secure Boot are both provided by VirtualBox 7, so those checks pass honestly, without a bypass.
+- A Windows guest with 3 GB will run slower than one with 4 GB, and will page to its virtual disk more often. This is acceptable for a test lab, but it is unsupported by Microsoft and would not be acceptable in production.
+
+The alternatives were these.
+- **2 GB for Windows.** This would leave the host 4.5 GB, but Windows 11 would be very sluggish and may fail to update. I rejected it as too far below the minimum.
+- **4 GB for Windows (official minimum).** This leaves the host 2.5 GB, which fails (case A).
+- **Running only one guest at a time.** Then each guest could have its minimum, but the task requires both running at the same time.
+
+### 4.4 Dynamically allocated disks, not fixed
+
+A fixed disk reserves its whole size immediately and avoids the small cost of growing the file, but on an NVMe drive that speed difference is hardly noticeable. A fixed disk would also commit 89 GB at once. A dynamic disk starts small, keeps the SSD free for the host, and in the worst case still leaves 267 GB free, so the main risk of dynamic disks (running out of space on the host) does not arise. The drawback is that a dynamic disk file grows but does not shrink by itself, which is acceptable here. Windows is given 64 GB because that is the Windows 11 minimum.
+
+### 4.5 Network: NAT plus Host-only for Ubuntu, NAT only for Windows
+
+The requirement is that the Ubuntu guest must be reachable by ssh from the host and must still reach the internet. No single VirtualBox mode gives both cleanly, so I give Ubuntu two adapters.
+
+- **Adapter 1: NAT.** The guest reaches the internet through the host's own connection. It works the same whether the laptop is on Wi-Fi or Ethernet, and it hides the guest from the office network. NAT on its own does not let the host connect inward to the guest, except through a port-forwarding rule.
+- **Adapter 2: Host-only.** VirtualBox creates a private network between the host and the guest (by default 192.168.56.0/24). The host can ssh to the guest's address on that network directly, with no port forwarding, and nobody else on the office network can reach it.
+
+The alternatives were these.
+- **NAT only with port forwarding** (for example host port 2222 to guest port 22). This does work and uses only one adapter, but ssh then goes to `localhost:2222`, which depends on a hidden rule that is easy to forget or break. I preferred a plain address.
+- **Bridged only.** The guest would get an address on the office LAN. That would make ssh and internet work in one adapter, but bridging over a laptop Wi-Fi adapter is often unreliable, the guest's address depends on the office DHCP server and changes, and sshd would be exposed to everyone on the office network. For a test lab that is an unnecessary risk.
+- **Host-only only.** ssh works, but there is no internet, so `apt` updates would fail. This breaks the requirement.
+
+The Windows guest only needs internet access and nobody has to reach it, so a single NAT adapter is enough. This also keeps it unreachable from the network. Because each NAT is private to its own virtual machine, the two guests cannot see each other. If the office wants them to communicate, a Host-only adapter can be added to the Windows guest as well.
+
+## 5. Verification plan
+
+These commands are run after both guests are built and **both are running at the same time**. The address `192.168.56.101` is an example; the real one is whatever the Host-only adapter was given (shown by `ip -br addr` in the Ubuntu guest). Memory figures are slightly below the configured size, because the kernel and firmware reserve some.
+
+### 5.1 On the host (Windows PowerShell)
+
+| Command | Expected output | What it proves |
+|---|---|---|
+| `& "C:\Program Files\Oracle\VirtualBox\VBoxManage.exe" list runningvms` | Two lines, one with each VM name | Both guests are running at the same time |
+| `VBoxManage showvminfo <ubuntu-vm> --machinereadable \| findstr /i "^memory= ^cpus= ^nic1= ^nic2="` | `memory=1024`, `cpus=1`, `nic1="nat"`, `nic2="hostonly"` | The Ubuntu guest is configured as planned |
+| `VBoxManage showvminfo <win-vm> --machinereadable \| findstr /i "^memory= ^cpus= ^nic1="` | `memory=3072`, `cpus=2`, `nic1="nat"` | The Windows guest is configured as planned |
+| `Test-NetConnection 192.168.56.101 -Port 22` | `TcpTestSucceeded : True` | The host can reach sshd on the Ubuntu guest |
+| `ssh <user>@192.168.56.101` | Host-key fingerprint question the first time, then `Welcome to Ubuntu 24.04 LTS ...` and a shell prompt | ssh from the host works |
+| `(Get-CimInstance Win32_OperatingSystem).FreePhysicalMemory` | About 500000 KB or more (0.5 GB or more) free, with no sustained heavy paging | The host is still usable with both guests running |
+| `Get-PSDrive C` | Free space about 267 GB (or no more than 89 GB below the value before the guests were built) | The disk plan holds |
+
+### 5.2 In the Ubuntu guest (over the ssh connection)
+
+| Command | Expected output | What it proves |
+|---|---|---|
+| `nproc` | `1` | The guest sees 1 vCPU |
+| `free -m` | `Mem:` total about 900 to 990 | The guest sees about 1 GB of RAM |
+| `lsblk -d -o NAME,SIZE,TYPE` | `sda  25G  disk` | The disk is 25 GB |
+| `ip -br addr` | `enp0s3 UP 10.0.2.15/24` and `enp0s8 UP 192.168.56.101/24` | Two adapters: NAT and Host-only |
+| `ip route` | `default via 10.0.2.2 dev enp0s3 ...` | Internet traffic goes through the NAT adapter |
+| `systemctl is-active ssh` | `active` | The ssh service is running |
+| `ss -tln \| grep :22` | A `LISTEN` line on `0.0.0.0:22` (and `[::]:22`) | sshd is listening on port 22 |
+| `curl -sI https://ubuntu.com \| head -1` | `HTTP/2 200` or `HTTP/2 301` | Internet access and DNS work |
+| `ping -c 3 8.8.8.8` | `3 received, 0% packet loss` | Raw internet connectivity works |
+
+### 5.3 In the Windows 11 guest (PowerShell)
+
+| Command | Expected output | What it proves |
+|---|---|---|
+| `(Get-CimInstance Win32_ComputerSystem).NumberOfLogicalProcessors` | `2` | The guest sees 2 vCPUs |
+| `[math]::Round((Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory/1GB,1)` | About `3` (2.9 to 3.0) | The guest sees about 3 GB of RAM |
+| `Get-Disk \| Select Number,@{n='GB';e={[math]::Round($_.Size/1GB)}}` | One disk of `64` | The disk is 64 GB |
+| `Get-NetAdapter` | One adapter with `Status: Up` | One network adapter, as planned |
+| `ipconfig` | IPv4 `10.0.2.15`, default gateway `10.0.2.2` | The adapter is in NAT mode |
+| `Test-NetConnection www.microsoft.com -Port 443` | `TcpTestSucceeded : True` | Internet access and DNS work |
+| `Confirm-SecureBootUEFI` and `Get-Tpm` | `True`, and `TpmPresent : True` | Secure Boot and TPM 2.0 are genuinely present |
+
+Both guests show `10.0.2.15` on their NAT adapter. This is normal: each NAT is private to its own virtual machine, so the addresses do not conflict.
+
+## 6. What this plan gives up, and the real fix
+
+- The Windows 11 guest runs outside Microsoft's supported minimum, so it will be slower and will page more.
+- The host keeps only about 0.5 GB of margin beyond the 3.0 GB I assumed it needs. Browsers and other heavy applications should be closed while both guests run.
+- It is suitable for a test lab, not for always-on use.
+- The real fix is hardware. Task 1 showed a single 8 GB module, and this laptop family normally has a second SODIMM slot (to be checked). Adding another 8 GB, for 16 GB in total, would let both guests have their official minimums, with about 7 GB left for the host
