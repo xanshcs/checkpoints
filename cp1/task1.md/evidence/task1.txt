@@ -1,0 +1,30 @@
+CPU model: 11th Gen Intel(R) Core(TM) i5-11400H @ 2.70GHz CPU || command: Get-CimInstance Win32_Processor | Format-List *
+
+Cores/logical processors: 
+NumberOfCores                           : 6
+NumberOfCores                           : 6
+NumberOfEnabledCore                     : 6
+NumberOfLogicalProcessors               : 12
+command: Get-CimInstance Win32_Processor | Format-List *
+
+Hardware virtualization: supported? enabled in firmware?: 
+Virtualization Enabled In Firmware: Yes
+command: systeminfo
+
+Memory: total / available now:
+Полный объем физической памяти:          7 914 МБ
+Доступная физическая память:             1 237 МБ
+command: systeminfo
+
+System disk: size, free space, SSD or HDD:
+MediaType                        : SSD
+DriveLetter FriendlyName FileSystemType DriveType HealthStatus OperationalStatus SizeRemaining      Size
+----------- ------------ -------------- --------- ------------ ----------------- -------------      ----
+                         NTFS           Fixed     Healthy      OK                      85.4 MB   1.08 GB
+C                        NTFS           Fixed     Healthy      OK                     70.93 GB 475.75 GB
+command: Get-Volume
+
+Partition style of the system disk:
+
+OS and version:
+
