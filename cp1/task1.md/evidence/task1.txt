@@ -1,30 +1,75 @@
-CPU model: 11th Gen Intel(R) Core(TM) i5-11400H @ 2.70GHz CPU || command: Get-CimInstance Win32_Processor | Format-List *
+# **Task 1 – Computer specifications and laptop assessment**
 
-Cores/logical processors: 
-NumberOfCores                           : 6
-NumberOfCores                           : 6
-NumberOfEnabledCore                     : 6
-NumberOfLogicalProcessors               : 12
-command: Get-CimInstance Win32_Processor | Format-List *
+## **1a. The computer in front of you**
 
-Hardware virtualization: supported? enabled in firmware?: 
-Virtualization Enabled In Firmware: Yes
-command: systeminfo
+I extracted the specifications from your uploaded PowerShell evidence. Here is the completed table.
 
-Memory: total / available now:
-Полный объем физической памяти:          7 914 МБ
-Доступная физическая память:             1 237 МБ
-command: systeminfo
+| Figure                     | This computer                                   | Command it came from                               |
+| -------------------------- | ----------------------------------------------- | -------------------------------------------------- |
+| CPU model                  | Intel Core i5-11400H, 2.70 GHz                  | `Get-CimInstance Win32_Processor`                  |
+| Cores / logical processors | 6 cores / 12 logical processors                 | `Get-CimInstance Win32_Processor`                  |
+| Hardware virtualization    | Supported: Yes. Enabled in firmware: Yes.       | `Get-CimInstance Win32_Processor` and `systeminfo` |
+| Memory: total / available  | 7,914 MB / 1,132 MB                             | `systeminfo`                                       |
+| System disk                | 475.75 GB, 70.94 GB free, NVMe SSD              | `Get-PhysicalDisk` and `Get-Volume`                |
+| Partition style            | Not collected yet                               | `Get-Disk`                                         |
+| OS and version             | Windows 11 Pro, version 10.0.26200, build 26200 | `systeminfo`                                       |
 
-System disk: size, free space, SSD or HDD:
-MediaType                        : SSD
-DriveLetter FriendlyName FileSystemType DriveType HealthStatus OperationalStatus SizeRemaining      Size
------------ ------------ -------------- --------- ------------ ----------------- -------------      ----
-                         NTFS           Fixed     Healthy      OK                      85.4 MB   1.08 GB
-C                        NTFS           Fixed     Healthy      OK                     70.93 GB 475.75 GB
-command: Get-Volume
+### **Additional command for missing evidence**
 
-Partition style of the system disk:
+Open PowerShell and run:
 
-OS and version:
+```
+Get-Disk | Format-Table Number, FriendlyName, PartitionStyle, Size
+```
 
+This should show whether the system disk uses GPT or MBR.
+
+### **Evidence file:&#x20;**`evidence/task1.txt`
+
+Paste the actual outputs of these commands into that file:
+
+```
+Get-CimInstance Win32_Processor | Format-List *
+systeminfo
+Get-PhysicalDisk | Format-List *
+Get-Volume
+Get-Disk | Format-Table Number, FriendlyName, PartitionStyle, Size
+```
+
+Your uploaded output already contains the first four commands. You only need to collect the fifth.
+
+## **1b. A machine you have never seen: thin-and-light laptop**
+
+### **1. Could it run both guests simultaneously?**
+
+Laptop specifications:
+
+- CPU: 2 cores / 4 threads.
+- RAM: 8 GB.
+- Storage: 128 GB eMMC, with 31 GB free.
+- OS: Windows 11 Home in S mode.
+
+To decide whether both VMs can run, compare their combined requirements against the laptop's resources.
+
+| Resource | Available           | Calculation                                            |
+| -------- | ------------------- | ------------------------------------------------------ |
+| CPU      | 2 cores / 4 threads | Add the vCPUs allocated to both guests.                |
+| RAM      | 8 GB                | Guest 1 RAM + Guest 2 RAM + host RAM.                  |
+| Disk     | 31 GB free          | Guest 1 disk + Guest 2 disk + host free-space reserve. |
+
+**Assumptions:** Reserve approximately 2–3 GB RAM for Windows and background processes. Avoid allocating all CPU threads to virtual machines.
+
+Windows 11 Home in S mode is also a limitation because it restricts installing conventional desktop virtualization software.
+
+**I need one missing piece to finish this accurately:** What CPU, RAM and disk sizes did you assign to your two guests in Labs 1–2? Please share your build log or those six figures. I won't invent them.
+
+### **2. Upgrade first**
+
+The biggest limitation is memory.
+
+- **RAM:** 8 GB is limited for running two VMs. It is soldered and cannot be upgraded.
+- **Storage:** eMMC is soldered and cannot be replaced like a normal SSD.
+- **CPU:** The processor is generally soldered and not upgradeable.
+- **Operating system:** Switching out of S mode would make installing conventional virtualization software easier.
+
+**My recommendation:** If both guests require substantial resources, use a more powerful laptop or desktop with at least 16 GB RAM and an upgradeable SSD. Otherwise, run one VM at a time or use a remote computer for virtualization.
